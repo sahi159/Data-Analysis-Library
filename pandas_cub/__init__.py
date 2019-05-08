@@ -187,10 +187,28 @@ class DataFrame:
 
         if isinstance(row_selection, int):
             row_selection = [row_selection]
+        elif isinstance(row_selection, DataFrame):
+            if row_selection.shape[1] != 1:
+                raise ValueError('Can only pass a one column DataFrame for selection')
+            row_selection = next(iter(row_selection._data.values()))
+            if row_selection.dtype.kind != 'b':
+                raise TypeError('DataFrame must be a boolean')
+        elif not isinstance(row_selection, (list, slice)):
+            raise TypeError('Row selection must be either an int, slice, list, or DataFrame')
+
         if isinstance(col_selection, int):
             col_selection = [self.columns[col_selection]]
         elif isinstance(col_selection, str):
             col_selection = [col_selection]
+        elif isinstance(col_selection, list):
+            new_col_selection = []
+            for col in col_selection:
+                if isinstance(col, int):
+                    new_col_selection.append(self.columns[col])
+                else:
+                    new_col_selection.append(col)
+            col_selection = new_col_selection
+            
         new_data = {}
         for col in col_selection:
             new_data[col] = self._data[col][row_selection]
