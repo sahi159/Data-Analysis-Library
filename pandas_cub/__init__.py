@@ -183,6 +183,18 @@ class DataFrame:
         # simultaneous selection of rows and cols -> df[rs, cs]
         if len(item) != 2:
             raise ValueError('Item tuple must have length 2')
+        row_selection, col_selection = item
+
+        if isinstance(row_selection, int):
+            row_selection = [row_selection]
+        if isinstance(col_selection, int):
+            col_selection = [self.columns[col_selection]]
+        elif isinstance(col_selection, str):
+            col_selection = [col_selection]
+        new_data = {}
+        for col in col_selection:
+            new_data[col] = self._data[col][row_selection]
+        return DataFrame(new_data)
 
     def _ipython_key_completions_(self):
         # allows for tab completion when doing df['c
