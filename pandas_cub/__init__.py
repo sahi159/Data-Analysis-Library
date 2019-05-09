@@ -569,7 +569,14 @@ class DataFrame:
         -------
         A DataFrame
         """
-        pass
+        new_data = {}
+        for col, values in self._data.items():
+            if values.dtype.kind in kinds:
+                values = funcname(values, **kwargs)
+            else:
+                values = values.copy()
+            new_data[col] = values
+        return DataFrame(new_data)
 
     def diff(self, n=1):
         """
@@ -584,8 +591,15 @@ class DataFrame:
         -------
         A DataFrame
         """
-        def func():
-            pass
+        def func(values):
+            values = values.astype('float')
+            values_shifted = np.roll(values, n)
+            values = values - values_shifted
+            if n >= 0:
+                values[:n] = np.NAN
+            else:
+                values[n:] = np.NAN
+            return values
         return self._non_agg(func)
 
     def pct_change(self, n=1):
@@ -601,9 +615,19 @@ class DataFrame:
         -------
         A DataFrame
         """
-        def func():
-            pass
+
+        def func(values):
+            values = values.astype('float')
+            values_shifted = np.roll(values, n)
+            values = values - values_shifted
+            if n >= 0:
+                values[:n] = np.NAN
+            else:
+                values[n:] = np.NAN
+            return values / values_shifted
         return self._non_agg(func)
+        
+
 
     #### Arithmetic and Comparison Operators ####
 
@@ -674,7 +698,16 @@ class DataFrame:
         -------
         A DataFrame
         """
-        pass
+        if isinstance(other, DataFrame):
+            if other.shape[1] != 1:
+                raise ValueError('`other` must be a one-column DataFrame')
+            other = next(iter(other._data.values()))
+        new_data = {}
+        for col, values in self._data.items():
+            func = getattr(values, op)
+            new_data[col] = func(other)
+        return DataFrame(new_data)
+
 
     def sort_values(self, by, asc=True):
         """
@@ -689,7 +722,18 @@ class DataFrame:
         -------
         A DataFrame
         """
-        pass
+        if isinstance(by, str):
+            order = np.argsort(self._data[by])
+        elif isinstance(by, list):
+            cols = [self._data[col] for col in by[::-1]]
+            order = np.lexsort(cols)
+        else:
+            raise TypeError('`by` must be a str or a list')
+
+        if not asc:
+            order = order[::-1]
+        return self[order.tolist(), :]
+
 
     def sample(self, n=None, frac=None, replace=False, seed=None):
         """
@@ -710,7 +754,17 @@ class DataFrame:
         -------
         A DataFrame
         """
-        pass
+        if seed:
+            np.random.seed(seed)
+        if frac is not None:
+            if frac <= 0:
+                raise ValueError('`frac` must be positive')
+            n = int(frac * len(self))
+        if n is not None:
+            if not isinstance(n, int):
+                raise TypeError('`n` must be an int')
+            rows = np.random.choice(np.arange(len(self)), size=n, replace=replace).tolist()
+        return self[rows, :]
 
     def pivot_table(self, rows=None, columns=None, values=None, aggfunc=None):
         """
@@ -730,7 +784,7 @@ class DataFrame:
         -------
         A DataFrame
         """
-        pass
+        
 
     def _add_docs(self):
         agg_names = ['min', 'max', 'mean', 'median', 'sum', 'var',
