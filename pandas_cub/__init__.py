@@ -418,7 +418,21 @@ class DataFrame:
         -------
         A list of DataFrames or a single DataFrame if one column
         """
-        pass
+        dfs = []
+        for col, values in self._data.items():
+            keys, raw_counts = np.unique(values, return_counts=True)
+            
+            order = np.argsort(-raw_counts)
+            keys = keys[order]
+            raw_counts = raw_counts[order]
+
+            if normalize:
+                raw_counts = raw_counts / len(self)
+            df = DataFrame({col: keys, 'count': raw_counts})
+            dfs.append(df)
+        if len(dfs) == 1:
+            return dfs[0]
+        return dfs
 
     def rename(self, columns):
         """
@@ -433,7 +447,14 @@ class DataFrame:
         -------
         A DataFrame
         """
-        pass
+        if not isinstance(columns, dict):
+            raise TypeError('`columns` must be a dictionary')
+
+        new_data = {}
+        for col, values in self._data.items():
+            new_data[columns.get(col, col)] = values
+        return DataFrame(new_data)
+        
 
     def drop(self, columns):
         """
@@ -447,7 +468,15 @@ class DataFrame:
         -------
         A DataFrame
         """
-        pass
+        if isinstance(columns, str):
+            columns = [columns]
+        elif not isinstance(columns, list):
+            raise TypeError('`columns` must be either a string or a list')
+        new_data = {}
+        for col, values in self._data.items():
+            if col not in columns:
+                new_data[col] = values
+        return DataFrame(new_data)
 
     #### Non-Aggregation Methods ####
 
